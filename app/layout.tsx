@@ -6,17 +6,16 @@ export const metadata: Metadata = {
   title: "The Real Estate Agent",
   description: "AI real-estate sales agent with a 3D little-planet visualization.",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/favicon.svg`,
+    shortcut: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/favicon.svg`,
+    apple: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/favicon.svg`,
   },
 };
 
 const earlyThemeScript = `
 (function () {
   try {
-    var theme = localStorage.getItem('gpr_theme');
-    theme = theme === 'light' ? 'light' : 'dark';
+    var theme = 'dark'; // light-mode button removed: dark-only
     if (theme === 'dark') document.body.classList.add('dark-mode');
     else document.body.classList.remove('dark-mode');
     var lang = localStorage.getItem('gpr_language');

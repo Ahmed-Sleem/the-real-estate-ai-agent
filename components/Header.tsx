@@ -9,7 +9,7 @@ import React, { useEffect, useState } from "react";
 import { useApp } from "../context/AppContext";
 
 export const Header: React.FC = () => {
-  const { language, setLanguage, theme, setTheme, setIsSettingsOpen, deviceId } = useApp();
+  const { language, setLanguage, setIsSettingsOpen, deviceId } = useApp();
   const [isRightPanelClosed, setIsRightPanelClosed] = useState(false);
   const [isLeftPanelClosed, setIsLeftPanelClosed] = useState(true);
 
@@ -69,12 +69,6 @@ export const Header: React.FC = () => {
               <circle cx="12" cy="12" r="10"/>
               <path strokeLinecap="round" d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
             </svg>
-          </button>
-
-          {/* Theme toggle */}
-          <button className="tool-btn" id="themeSwitch" type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Switch theme" aria-pressed={theme === "dark"} title={theme === "dark" ? (language === "ar" ? "الوضع المضيء (Light Mode)" : "Switch to Light Mode") : (language === "ar" ? "الوضع الليلي (Dark Mode)" : "Switch to Dark Mode")}>
-            <svg className="icon-sun" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}><circle cx="12" cy="12" r="4"/><path strokeLinecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            <svg className="icon-moon" viewBox="0 0 24 24" style={{ width: "16px", height: "16px" }}><path strokeLinecap="round" stroke="currentColor" strokeLinejoin="round" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </button>
 
           {/* Settings Button (round-square SVG cog) */}

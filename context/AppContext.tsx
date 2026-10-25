@@ -181,7 +181,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+
+  // ---- Local vault (static hosting, e.g. GitHub Pages): no backend exists, so
+  // profiles live in this browser only. Activated when the vault API is absent
+  // (405/404 HTML from a static host) instead of surfacing that HTML as an error.
+  const localVaultRef = useRef<boolean>(false);
+  type LocalProfile = SavedApiKey & { key: string };
+  const LOCAL_VAULT_KEY = "rea_local_vault_profiles_v1";
+  const loadLocalProfiles = (): LocalProfile[] => {
+    try { const raw = localStorage.getItem(LOCAL_VAULT_KEY); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; } catch { return []; }
+  };
+  const saveLocalProfiles = (profiles: LocalProfile[]) => localStorage.setItem(LOCAL_VAULT_KEY, JSON.stringify(profiles));
+  const applyLocalProfiles = () => {
+    const profiles = loadLocalProfiles();
+    setSavedApiKeys(profiles.map(({ key, ...rest }) => ({ ...rest, key_hint: key ? key.slice(-4) : undefined })));
+    const active = profiles.find(p => p.is_active) || profiles[0];
+    applyActiveProfileMetadata(profiles, active ? active.id : null);
+  };
+  const seedLocalProfilesFromLegacy = () => {
+    if (loadLocalProfiles().length) return;
+    const legacy: LocalProfile[] = [];
+    const collect = (jsonText: string | null) => { if (!jsonText) return; try { const arr = JSON.parse(jsonText); if (!Array.isArray(arr)) return; arr.forEach((item: any, i: number) => { if (item?.key) legacy.push({ id: item.id || `local_${i}`, label: item.label || "Local Profile", provider: isProvider(item.provider) ? item.provider : "deepseek", model: item.model || "deepseek-chat", key: item.key, is_active: !!item.is_active }); }); } catch { /* ignore */ } };
+    collect(localStorage.getItem(`gpr_saved_keys_${deviceId}`)); collect(localStorage.getItem("gpr_saved_keys"));
+    const single = localStorage.getItem("gpr_llm_api_key"); if (single) legacy.push({ id: "local_single", label: "Local Profile", provider: isProvider(localStorage.getItem("gpr_llm_provider")) ? (localStorage.getItem("gpr_llm_provider") as any) : "deepseek", model: localStorage.getItem("gpr_llm_model") || "deepseek-chat", key: single, is_active: true });
+    if (legacy.length) { if (!legacy.some(p => p.is_active)) legacy[0].is_active = true; saveLocalProfiles(legacy); }
+  };
+
   const refreshVaultProfiles = async () => {
+    if (localVaultRef.current) { applyLocalProfiles(); return; }
     const res = await fetch("/api/v1/vault/profiles", { credentials: "include" });
     if (!res.ok) {
       const text = await res.text();
@@ -278,8 +305,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setVaultError(null);
       const bootstrap = await fetch("/api/v1/vault/bootstrap", { method: "POST", credentials: "include" });
+      const bootText = bootstrap.ok ? "" : await bootstrap.text();
       if (!bootstrap.ok) {
-        throw new Error(await bootstrap.text());
+        // Static hosting (GitHub Pages) answers POST with 405 HTML: there is no
+        // vault server by design. Fall back to the browser-local vault silently.
+        if (bootstrap.status === 404 || bootstrap.status === 405 || bootText.includes("<html")) {
+          localVaultRef.current = true;
+          seedLocalProfilesFromLegacy();
+          applyLocalProfiles();
+          setVaultError(null);
+          return;
+        }
+        throw new Error(bootText.replace(/<[^>]*>/g, " ").trim() || `Vault setup failed (${bootstrap.status})`);
       }
       await migrateLegacyKeysToVault(devId);
       await refreshVaultProfiles();
@@ -298,15 +335,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setDeviceId(devId);
 
       const savedLang = (localStorage.getItem("gpr_language") as "ar" | "en") || "en";
-      const savedTheme = (localStorage.getItem("gpr_theme") as "dark" | "light") || "dark";
+      const savedTheme = "dark"; // light-mode button removed: app runs dark-only
       setVizColored(localStorage.getItem("rea_viz_colored") === "true");
       const savedCycles = parseInt(localStorage.getItem(`gpr_workflow_cycles_${devId}`) || "3", 10);
       setLanguageState(savedLang === "ar" || savedLang === "en" ? savedLang : "en");
       if (savedCycles >= 1 && savedCycles <= 6) setWorkflowCyclesState(savedCycles);
       document.documentElement.dir = savedLang === "ar" ? "rtl" : "ltr";
       document.documentElement.lang = savedLang === "ar" ? "ar" : "en";
-      setThemeState(savedTheme === "light" ? "light" : "dark");
-      if (savedTheme === "dark") document.body.classList.add("dark-mode"); else document.body.classList.remove("dark-mode");
+      setThemeState("dark");
+      document.body.classList.add("dark-mode");
 
       const convsJson = localStorage.getItem(`gpr_conversations_${devId}`) || localStorage.getItem("gpr_conversations");
       let initialConvs: Conversation[] = [
@@ -392,6 +429,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addSavedApiKey = async (keyObj: NewApiKeyProfile) => {
+    if (localVaultRef.current) {
+      const profiles = loadLocalProfiles().map(p => ({ ...p, is_active: false }));
+      profiles.push({ id: `local_${Date.now()}`, label: keyObj.label, provider: keyObj.provider, model: keyObj.model, key: keyObj.key, is_active: true, created_at: new Date().toISOString() });
+      saveLocalProfiles(profiles); applyLocalProfiles(); return;
+    }
     const res = await fetch("/api/v1/vault/profiles", {
       method: "POST",
       credentials: "include",
@@ -410,12 +452,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const deleteSavedApiKey = async (id: string) => {
+    if (localVaultRef.current) { saveLocalProfiles(loadLocalProfiles().filter(p => p.id !== id)); applyLocalProfiles(); return; }
     const res = await fetch(`/api/v1/vault/profiles/${id}`, { method: "DELETE", credentials: "include" });
     if (!res.ok) throw new Error(await res.text());
     await refreshVaultProfiles();
   };
 
   const selectSavedApiKey = async (id: string) => {
+    if (localVaultRef.current) { saveLocalProfiles(loadLocalProfiles().map(p => ({ ...p, is_active: p.id === id }))); applyLocalProfiles(); return; }
     const res = await fetch(`/api/v1/vault/profiles/${id}/activate`, { method: "POST", credentials: "include" });
     if (!res.ok) throw new Error(await res.text());
     await refreshVaultProfiles();

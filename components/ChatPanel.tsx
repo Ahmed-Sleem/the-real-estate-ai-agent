@@ -510,7 +510,7 @@ export const ChatPanel: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      <div style={{ display: "flex", gap: "8px", padding: "10px 12px 0", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: "8px", padding: "10px 12px 0", marginBottom: "12px", flexWrap: "wrap" }}>
         <button type="button" onClick={runDemoConversation} disabled={demoRunning} style={{ padding: "8px 14px", borderRadius: "999px", border: "none", background: "var(--color-accent)", color: "var(--color-accent-contrast)", fontWeight: 700, cursor: "pointer", fontSize: "12px" }}>{demoRunning ? "▶ Playing…" : "▶ Play demo conversation"}</button>
         <button type="button" onClick={resetDemo} style={{ padding: "8px 14px", borderRadius: "999px", border: "1px solid var(--border-med)", background: "var(--color-paper)", color: "var(--text-primary)", fontWeight: 700, cursor: "pointer", fontSize: "12px" }}>↺ Reset 3D city</button>
       </div>

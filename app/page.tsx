@@ -25,9 +25,12 @@ export default function Home() {
     const rightPanel = document.getElementById("rightPanel");
     const mainWindow = document.getElementById("mainWindow");
     const leftWidth = Number(localStorage.getItem(layoutKey("left_width")) || "280");
-    const rightWidth = Number(localStorage.getItem(layoutKey("right_width")) || "290");
+    const storedRight = localStorage.getItem(layoutKey("right_width_v2"));
+    // best-practice fluid default: 35% of viewport, floored and capped (see globals.css)
+    const fluidRight = Math.round(Math.min(640, Math.max(360, window.innerWidth * 0.35)));
+    const rightWidth = storedRight ? Number(storedRight) : fluidRight;
     const safeLeft = Math.min(Math.max(leftWidth, 280), 420);
-    const safeRight = Math.min(Math.max(rightWidth, 290), 540);
+    const safeRight = Math.min(Math.max(rightWidth, 360), Math.min(720, Math.max(360, window.innerWidth - 620)));
 
     document.documentElement.style.setProperty("--left-width", `${safeLeft}px`);
     document.documentElement.style.setProperty("--right-width", `${safeRight}px`);
@@ -98,8 +101,8 @@ export default function Home() {
       }
 
       let newWidth = isRtl ? startWidth + deltaX : startWidth - deltaX;
-      const maxAllowed = Math.min(540, window.innerWidth - 320 - 240);
-      newWidth = Math.min(Math.max(newWidth, 290), Math.max(290, maxAllowed));
+      const maxAllowed = Math.min(720, window.innerWidth - 320 - 240);
+      newWidth = Math.min(Math.max(newWidth, 360), Math.max(360, maxAllowed));
 
       latestWidth = newWidth;
       targetPanel.style.width = `${newWidth}px`;
@@ -111,7 +114,7 @@ export default function Home() {
     const onMouseUp = () => {
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
-      localStorage.setItem(layoutKey(target === "left" ? "left_width" : "right_width"), String(Math.round(latestWidth)));
+      localStorage.setItem(layoutKey(target === "left" ? "left_width" : "right_width_v2"), String(Math.round(latestWidth)));
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };

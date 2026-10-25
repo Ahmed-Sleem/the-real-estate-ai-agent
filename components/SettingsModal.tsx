@@ -84,6 +84,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           model: model.trim()
         })
       });
+      const contentType = res.headers.get("content-type") || "";
+      if (!res.ok || !contentType.includes("application/json")) {
+        // Static hosting has no vault/test endpoint (405). The key is stored in
+        // this browser and verified by the provider on your first real message.
+        setTestResult({ status: "error", message: language === "ar" ? "لا يوجد خادم اختبار في الاستضافة الثابتة — احفظ المفتاح وسيتم التحقق منه مع أول رسالة." : "No test server on static hosting — save the key; the provider verifies it on your first message." });
+        return;
+      }
       const data = await res.json();
       setTestResult({ status: data.status || "valid", message: data.message || "Connected successfully!" });
     } catch (e: any) {
