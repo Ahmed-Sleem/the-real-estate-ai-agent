@@ -36,14 +36,15 @@ interface Rec { item: PlanetItem; group: THREE.Group; ring: THREE.Mesh; normal: 
 
 export const ObsidianGraphView: React.FC = () => {
   const { language, activeGraphNodeIds, vizPhase, shortlistedIds, rejectedIds, drillPath, setDrillPath,
-    setActiveGraphNodeIds, setVizPhase, setShortlistedIds, setRejectedIds, focusedPropertyId, setFocusedPropertyId, setVizSelection, vizColored } = useApp();
+    setActiveGraphNodeIds, setVizPhase, setShortlistedIds, setRejectedIds, focusedPropertyId, setFocusedPropertyId, setVizSelection, vizColored, vizTransparency } = useApp();
   const containerRef = useRef<HTMLDivElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
+  const hoverRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(0);
-  const live = useRef({ active: [] as string[], phase: "IDLE", shortlist: [] as string[], rejected: [] as string[], focused: null as string | null, path: [] as string[], colored: false });
-  live.current = { active: activeGraphNodeIds, phase: vizPhase, shortlist: shortlistedIds, rejected: rejectedIds, focused: focusedPropertyId, path: drillPath, colored: vizColored };
+  const live = useRef({ active: [] as string[], phase: "IDLE", shortlist: [] as string[], rejected: [] as string[], focused: null as string | null, path: [] as string[], colored: false, transparency: 68 });
+  live.current = { active: activeGraphNodeIds, phase: vizPhase, shortlist: shortlistedIds, rejected: rejectedIds, focused: focusedPropertyId, path: drillPath, colored: vizColored, transparency: vizTransparency };
   const mgr = useRef<{ setLevel: (p: string[]) => void; focus: (id: string) => void; resetCam: () => void } | null>(null);
   const { items, title } = levelItems(drillPath);
 
@@ -69,7 +70,7 @@ export const ObsidianGraphView: React.FC = () => {
     const starLayers: THREE.Points[] = []; // sky lives in NightSky (whole app), not duplicated here
     const planet = new THREE.Group(); scene.add(planet);
     const sphereMesh = new THREE.Mesh(new THREE.SphereGeometry(R, 40, 28),
-      new THREE.MeshStandardMaterial({ color: 0xcfe0f2, roughness: .9, transparent: true, opacity: .38 }));
+      new THREE.MeshStandardMaterial({ color: 0xcfe0f2, roughness: .9, transparent: true, opacity: .22 }));
     planet.add(sphereMesh);
     const wire = new THREE.Mesh(new THREE.SphereGeometry(R * 1.002, 24, 16),
       new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: .20 }));
@@ -116,7 +117,7 @@ itemsMap.forEach(r => { if (r.state === "alive") r.state = "level-out"; });
       root.traverse((o: any) => { if (o.isMesh) { o.material = o.material.clone(); o.userData._map = o.material.map || null; o.userData._color = o.material.color ? o.material.color.clone() : null;
         // SKELETON-FIRST: every clone is born skeleton unless Colours is ON.
         // (Fixes colours/textures coming back on every new drill level.)
-        if (!live.current.colored) { o.material.map = null; o.material.color.set(0xdfe9f5); o.material.transparent = true; o.material.opacity = 0.55; if (o.material.emissive) { o.material.emissive.set(0x1a2a3f); o.material.emissiveIntensity = 0.35; } o.material.needsUpdate = true; } } });
+        if (!live.current.colored) { o.material.map = null; o.material.color.set(0xdfe9f5); o.material.transparent = true; o.material.opacity = 1 - live.current.transparency / 100; if (o.material.emissive) { o.material.emissive.set(0x1a2a3f); o.material.emissiveIntensity = 0.35; } o.material.needsUpdate = true; } } });
       const box = new THREE.Box3().setFromObject(root); const size = box.getSize(new THREE.Vector3());
       const s = footprint / Math.max(size.x, size.z, .001); root.scale.setScalar(s);
       const c = box.getCenter(new THREE.Vector3()); root.position.set(-c.x * s, -box.min.y * s, -c.z * s);
@@ -197,6 +198,31 @@ itemsMap.forEach(r => { if (r.state === "alive") r.state = "level-out"; });
               const its2 = levelItems(path).items.find(x => x.id === id); if (its2) setVizSelection({ id, name: its2.name, detail: its2.sub }); if (path.length < 3) { setDrillPath([...path, id]); setVizPhase("THINKING"); } else { setFocusedPropertyId(id); setVizPhase("FOCUS"); } break; } }
     };
     renderer.domElement.addEventListener("pointerdown", onClick);
+    // Hover tooltip: small name card that follows the cursor over any place/unit
+    const hoverEl = hoverRef.current;
+    const onHover = (e: PointerEvent) => {
+      if (!hoverEl) return;
+      ptr.x = (e.offsetX / container.clientWidth) * 2 - 1; ptr.y = -(e.offsetY / container.clientHeight) * 2 + 1;
+      ray.setFromCamera(ptr, camera);
+      const hits = ray.intersectObjects(planet.children, true);
+      let found: PlanetItem | null = null;
+      for (const h of hits) { let o: any = h.object; while (o && !o.userData.propId) o = o.parent; if (o) { found = itemsMap.get(o.userData.propId)?.item || null; if (found) break; } }
+      if (found) {
+        hoverEl.innerHTML = `<div style="font-weight:800;font-size:12px;line-height:1.35">${found.name}</div><div style="font-weight:600;font-size:10px;color:var(--text-meta);line-height:1.35">${found.sub}</div>`;
+        const pad = 14, w = 190, hgt = 52;
+        hoverEl.style.left = `${Math.min(e.offsetX + pad, Math.max(container.clientWidth - w, 0))}px`;
+        hoverEl.style.top = `${Math.min(e.offsetY + pad, Math.max(container.clientHeight - hgt, 0))}px`;
+        hoverEl.style.opacity = "1";
+        renderer.domElement.style.cursor = "pointer";
+      } else {
+        hoverEl.style.opacity = "0";
+        renderer.domElement.style.cursor = "";
+      }
+    };
+    const onHoverLeave = () => { if (hoverEl) hoverEl.style.opacity = "0"; renderer.domElement.style.cursor = ""; };
+    renderer.domElement.addEventListener("pointermove", onHover);
+    renderer.domElement.addEventListener("pointerleave", onHoverLeave);
+
 
     let spin = .07, raf = 0;
     const clock = new THREE.Clock(); const _v = new THREE.Vector3();
@@ -223,16 +249,21 @@ itemsMap.forEach(r => { if (r.state === "alive") r.state = "level-out"; });
         controls.target.lerpVectors(flight.fromT, flight.toT, k);
         if (flight.t >= 1) flight.active = false;
       }
+      // skeleton transparency slider: re-apply to every skeleton mesh on change
+      if (!L.colored && (animate as any)._transp !== L.transparency) {
+        (animate as any)._transp = L.transparency;
+        planet.traverse((o: any) => { if (o.isMesh && o.material && o.userData._color) { o.material.opacity = 1 - L.transparency / 100; o.material.needsUpdate = true; } });
+      }
       // skeleton (default) <-> colored, applied once per toggle change
       if ((animate as any)._mode !== L.colored) {
         (animate as any)._mode = L.colored;
         (sphereMesh.material as THREE.MeshStandardMaterial).color.set(L.colored ? 0x3f7d4e : 0xcfe0f2);
         (sphereMesh.material as THREE.MeshStandardMaterial).transparent = !L.colored;
-        (sphereMesh.material as THREE.MeshStandardMaterial).opacity = L.colored ? 0.96 : 0.38;
+        (sphereMesh.material as THREE.MeshStandardMaterial).opacity = L.colored ? 0.96 : 0.22;
         wire.visible = !L.colored;
         planet.traverse((o: any) => { if (o.isMesh && o.material && o.userData._color) {
           if (L.colored) { o.material.map = o.userData._map; o.material.color.copy(o.userData._color); }
-          else { o.material.map = null; o.material.color.set(0xdfe9f5); o.material.transparent = true; o.material.opacity = 0.55; if (o.material.emissive) { o.material.emissive.set(0x1a2a3f); o.material.emissiveIntensity = 0.35; } }
+          else { o.material.map = null; o.material.color.set(0xdfe9f5); o.material.transparent = true; o.material.opacity = 1 - live.current.transparency / 100; if (o.material.emissive) { o.material.emissive.set(0x1a2a3f); o.material.emissiveIntensity = 0.35; } }
           o.material.needsUpdate = true;
         }});
       }
@@ -261,7 +292,7 @@ itemsMap.forEach(r => { if (r.state === "alive") r.state = "level-out"; });
         const targetGlow = (isActive || isWinner || isFocused) && r.state === "alive" ? 1 : 0;
         r.glow = THREE.MathUtils.lerp(r.glow, targetGlow, 1 - Math.pow(.001, dt));
         const shine = r.glow * (0.55 + 0.45 * Math.sin(t * 4.2));            // SHINE pulse (buildings stay attached, no spin)
-        g.traverse((o: any) => { if (o.isMesh && o !== r.ring) { o.material.transparent = true; o.material.opacity = r.opacity * (L.colored ? .97 : .55); /* skeleton = translucent futuristic minimal */ if (o.material.emissive) o.material.emissiveIntensity = shine * .65; } });
+        g.traverse((o: any) => { if (o.isMesh && o !== r.ring) { o.material.transparent = true; o.material.opacity = r.opacity * (L.colored ? .97 : 1 - L.transparency / 100); /* skeleton transparency = Settings slider */ if (o.material.emissive) o.material.emissiveIntensity = shine * .65; } });
         (r.ring.material as THREE.MeshBasicMaterial).color.set(isWinner ? 0xf59e0b : 0x22c55e);
         (r.ring.material as THREE.MeshBasicMaterial).opacity = r.glow * .9 * (.7 + Math.sin(t * 5) * .3);
         r.ring.scale.setScalar(1 + r.glow * Math.sin(t * 5) * .13);
@@ -285,7 +316,7 @@ itemsMap.forEach(r => { if (r.state === "alive") r.state = "level-out"; });
     animate();
     const onResize = () => { camera.aspect = container.clientWidth / Math.max(container.clientHeight, 1); camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); };
     const ro = new ResizeObserver(onResize); ro.observe(container);
-    return () => { disposed = true; cancelAnimationFrame(raf); ro.disconnect(); renderer.domElement.removeEventListener("pointerdown", onClick); controls.dispose(); renderer.dispose(); if (renderer.domElement.parentElement === container) container.removeChild(renderer.domElement); labelsEl.innerHTML = ""; };
+    return () => { disposed = true; cancelAnimationFrame(raf); ro.disconnect(); renderer.domElement.removeEventListener("pointerdown", onClick); renderer.domElement.removeEventListener("pointermove", onHover); renderer.domElement.removeEventListener("pointerleave", onHoverLeave); controls.dispose(); renderer.dispose(); if (renderer.domElement.parentElement === container) container.removeChild(renderer.domElement); labelsEl.innerHTML = ""; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -318,6 +349,7 @@ itemsMap.forEach(r => { if (r.state === "alive") r.state = "level-out"; });
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%", position: "relative", background: "transparent", overflow: "hidden" }}>
       <div ref={labelsRef} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 2 }} />
+      <div ref={hoverRef} aria-hidden="true" style={{ position: "absolute", zIndex: 20, pointerEvents: "none", opacity: 0, transition: "opacity .12s ease", maxWidth: 190, background: "var(--glass-bg-strong, var(--color-paper))", border: "1px solid var(--border-med)", borderRadius: 10, padding: "6px 9px", color: "var(--text-primary)", boxShadow: "var(--shadow-elevated)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }} />
       <div style={{ position: "absolute", top: 12, left: 12, right: 12, zIndex: 10, display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           {crumbs.map((c, i) => (

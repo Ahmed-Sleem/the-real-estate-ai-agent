@@ -20,7 +20,7 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const {
     savedApiKeys, activeApiKeyId, addSavedApiKey, deleteSavedApiKey, selectSavedApiKey,
-    workflowCycles, setWorkflowCycles, deviceId, language, t, vaultError, vizColored, setVizColored
+    workflowCycles, setWorkflowCycles, deviceId, language, t, vaultError, vizColored, setVizColored, vizTransparency, setVizTransparency
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<"api" | "workflow" | "viz">("api");
@@ -285,6 +285,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     <span style={{ width: "20px", height: "20px", borderRadius: "50%", background: vizColored ? "var(--color-accent-contrast)" : "var(--text-meta)", transition: "all 0.2s ease" }} />
                   </button>
                 </div>
+
+                {!vizColored && (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <label htmlFor="vizTransparencySlider" style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>
+                        {language === "ar" ? "شفافية الهيكل:" : "Skeleton transparency:"}
+                      </label>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>{vizTransparency}%</span>
+                    </div>
+                    <input
+                      id="vizTransparencySlider"
+                      type="range" min={0} max={90} step={1}
+                      value={vizTransparency}
+                      onChange={(e) => setVizTransparency(Number(e.target.value))}
+                      aria-label={language === "ar" ? "شفافية الأجسام ثلاثية الأبعاد" : "3D objects transparency"}
+                      style={{ width: "100%", accentColor: "var(--color-accent)", cursor: "pointer" }}
+                    />
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "var(--text-meta)", marginTop: "4px" }}>
+                      <span>{language === "ar" ? "معتم" : "Solid"}</span>
+                      <span>{language === "ar" ? "شفاف" : "Transparent"}</span>
+                    </div>
+                  </div>
+                )}
+                {vizColored && (
+                  <div style={{ fontSize: "11px", color: "var(--text-meta)", lineHeight: 1.5 }}>
+                    {language === "ar" ? "منزلق الشفافية متاح في وضع الهيكل فقط — أوقف الألوان لاستخدامه." : "The transparency slider is available in Skeleton mode only — turn colours off to use it."}
+                  </div>
+                )}
                 <div style={{ fontSize: "11px", color: "var(--text-body)", background: "var(--color-paper)", padding: "10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-soft)" }}>
                   {vizColored
                     ? (language === "ar" ? "الألوان مفعلة: تظهر خامات النماذج الأصلية والكوكب الأخضر." : "Colours ON: original model textures and the green planet are shown.")
