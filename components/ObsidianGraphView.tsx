@@ -230,17 +230,38 @@ itemsMap.forEach(r => { if (r.state === "alive") r.state = "level-out"; });
       raf = requestAnimationFrame(animate);
       const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
       const L = live.current;
+      // ---- Bulletproof focus (v8): target captured ONCE per focused id ----
+      // Root cause of the 2-3x spin glitch: the old code recomputed the desired
+      // angle every frame with a JS % wrap that breaks once planet.rotation.y
+      // grows past one turn (idle spin accumulates unbounded turns), so the
+      // "shortest" diff flipped sign and the globe looped before settling.
+      // Now: when the focused id changes, capture an absolute target rotation
+      // once (shortest-path via atan2(sin,cos), always correct for any accumulated
+      // rotation), kill idle spin instantly, ease to that fixed target with a
+      // clamped angular speed, snap + lock. It can never loop: the target never
+      // moves, velocity is one-directional toward it, and lock ends all motion.
+      const focusState = (animate as any)._focus || ((animate as any)._focus = { id: null as string | null, target: 0, locked: true });
+      if (!L.focused) { focusState.id = null; focusState.locked = true; }
       const targetSpin = flight.active || L.focused ? 0 : L.phase === "THINKING" ? .4 : .06;
-      spin = THREE.MathUtils.lerp(spin, targetSpin, 1 - Math.pow(.01, dt));
-      planet.rotation.y += spin * dt; planet.rotation.z = L.focused ? planet.rotation.z * .95 : Math.sin(t * .05) * .035;
-      // Inspection v5: ONLY a user click (focused) rotates the globe — once, directly,
-      // shortest path. Agent inspection (active) is glow-only and never rotates the globe,
-      // so the sphere no longer dances/repeats before settling.
+      spin = L.focused ? 0 : THREE.MathUtils.lerp(spin, targetSpin, 1 - Math.pow(.01, dt));
+      if (!L.focused) planet.rotation.y += spin * dt;
+      planet.rotation.z = L.focused ? planet.rotation.z * .9 : Math.sin(t * .05) * .035;
       if (L.focused && itemsMap.get(L.focused)) {
-        const n = itemsMap.get(L.focused)!.normal;
-        const desired = Math.atan2(camera.position.x, camera.position.z) - Math.atan2(n.x, n.z);
-        let diff = ((desired - planet.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-        planet.rotation.y += diff * Math.min(1, dt * 2.6);
+        if (focusState.id !== L.focused) {
+          const n = itemsMap.get(L.focused)!.normal;
+          const desired = Math.atan2(camera.position.x, camera.position.z) - Math.atan2(n.x, n.z);
+          const raw = desired - planet.rotation.y;
+          const shortest = Math.atan2(Math.sin(raw), Math.cos(raw)); // true shortest path, any accumulated turns
+          focusState.id = L.focused;
+          focusState.target = planet.rotation.y + shortest;
+          focusState.locked = false;
+        }
+        if (!focusState.locked) {
+          const remaining = focusState.target - planet.rotation.y;
+          const step = THREE.MathUtils.clamp(remaining * Math.min(1, dt * 3.2), -Math.max(dt * 1.6, Math.abs(remaining)), Math.max(dt * 1.6, Math.abs(remaining)));
+          planet.rotation.y += Math.abs(remaining) < 0.0015 ? remaining : step;
+          if (Math.abs(focusState.target - planet.rotation.y) < 0.0015) { planet.rotation.y = focusState.target; focusState.locked = true; }
+        }
       }
       if (flight.active) {
         flight.t += dt / flight.dur; const k = easeInOut(Math.min(flight.t, 1));
