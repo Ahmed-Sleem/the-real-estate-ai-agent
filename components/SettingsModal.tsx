@@ -269,7 +269,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <div style={{ background: "var(--color-stone)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-md)", padding: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
                 <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{language === "ar" ? "نوع العرض:" : "Visualization type:"}</span>
                 <div role="group" aria-label="Visualization type" style={{ display: "flex", gap: "8px" }}>
-                  {([["planet", language === "ar" ? "🌍 الكوكب ثلاثي الأبعاد" : "🌍 3D Planet"], ["list", language === "ar" ? "📋 قائمة" : "📋 List"]] as const).map(([mode, label]) => (
+                  {([["planet", language === "ar" ? "الكوكب ثلاثي الأبعاد" : "3D Planet"], ["list", language === "ar" ? "قائمة" : "List"]] as const).map(([mode, label]) => (
                     <button key={mode} type="button" aria-pressed={vizViewMode === mode} onClick={() => setVizViewMode(mode)}
                       style={{ flex: 1, padding: "9px 10px", borderRadius: "999px", cursor: "pointer", fontSize: "12px", fontWeight: 700,
                         border: `1.5px solid ${vizViewMode === mode ? "var(--color-accent)" : "var(--border-med)"}`,
@@ -649,8 +649,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </div>
 
                 <div style={{ fontSize: "11px", color: "var(--text-body)", background: "var(--color-paper)", padding: "10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-soft)" }}>
-                  {workflowCycles === 1 && (language === "ar" ? "دورة واحدة: يختار النموذج عقدة واحدة من الفهرس ثم يصوغ الإجابة مباشرة أو يرفض." : "1 Cycle: Inspects exactly 1 TOC node and immediately forces terminal answer/refusal.")}
-                  {workflowCycles === 3 && (language === "ar" ? "3 دورات (الموصى به): يسمح باستعراض حتى 3 عقد متتالية لحل الاستفسارات الإدارية والتشغيلية المتداخلة." : "3 Cycles (Recommended): Allows sequential inspection of up to 3 nodes before final answer.")}
+                  {workflowCycles === 1 && (language === "ar" ? "دورة واحدة: يختار النموذج عقدة واحدة من الفهرس ثم يصوغ الإجابة مباشرة أو يرفض." : "1 Cycle: the agent may run 1 tool round (browse/search) then must answer.")}
+                  {workflowCycles === 3 && (language === "ar" ? "3 دورات (الموصى به): يسمح باستعراض حتى 3 عقد متتالية لحل الاستفسارات الإدارية والتشغيلية المتداخلة." : "3 Cycles (Recommended): up to 3 tool rounds — e.g. browse a level, search units, compare — before the final answer.")}
                   {workflowCycles === 6 && (language === "ar" ? "6 دورات (الحد الأقصى): أقصى عمق استقصاء لأسئلة الهيكل المعقدة." : "6 Cycles (Maximum Depth): Deepest exploration across multiple departments.")}
                   {workflowCycles !== 1 && workflowCycles !== 3 && workflowCycles !== 6 && (language === "ar" ? `يسمح باستعراض ما يصل إلى ${workflowCycles} عقد دلالية متتالية.` : `Allows inspecting up to ${workflowCycles} distinct TOC nodes sequentially.`)}
                 </div>

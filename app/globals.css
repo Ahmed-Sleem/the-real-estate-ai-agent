@@ -1676,3 +1676,7 @@ body[dir="rtl"] .chat-logo { grid-column: 3; }
 .panel-right { min-width: 0; }
 @media (max-width: 1200px) { :root { --right-width: clamp(320px, 32vw, 480px); } }
 @media (min-width: 2200px) { :root { --right-width: 640px; } }
+
+/* list view: scrollable but no visible scrollbar */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }

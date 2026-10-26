@@ -5,11 +5,10 @@
  * Per Ahmed's exact instructions (`GAP-GPR-22`):
  * 1. Decodes live JSON tokens (`data: {"token": "..."}`) to guarantee zero truncation and zero connected characters.
  * 2. Displays a visible **Cycle Reasoning Log Card (`[ 🔄 TOC Navigation Steps ]`)** right inside the streaming bubble.
- * 3. Clicking inline citations (`[Source: Section X.Y]`) triggers `setInspectingNodeId(code)` to open our universal `CitationDrawer.tsx`.
  */
 import React, { useState, useRef, useEffect } from "react";
 import { useApp, ConversationTurn } from "../context/AppContext";
-import { createSseParser } from "../utils/sseParser";
+import { runAgent } from "../lib/agent";
 import { TREE, cityById } from "../data/hierarchy";
 
 interface ExtendedTurn extends ConversationTurn {
@@ -19,7 +18,7 @@ interface ExtendedTurn extends ConversationTurn {
 export const ChatPanel: React.FC = () => {
   const {
     conversations, activeConversationId, addTurnToConversation,
-    savedApiKeys, activeApiKeyId, apiProvider, apiModel, language, selectedDocIds, setActiveGraphNodeIds, setInspectingNodeId, deviceId, workflowCycles, setIsSettingsOpen, t, setVizPhase, setShortlistedIds, setRejectedIds, setFocusedPropertyId, drillPath, setDrillPath, vizSelection, setVizSelection
+    savedApiKeys, activeApiKeyId, apiProvider, apiModel, language, setActiveGraphNodeIds, deviceId, workflowCycles, setIsSettingsOpen, t, setVizPhase, setShortlistedIds, setRejectedIds, setFocusedPropertyId, drillPath, setDrillPath, vizSelection, setVizSelection, getActiveAgentKey
   } = useApp();
 
   const [inputMessage, setInputMessage] = useState("");
@@ -141,90 +140,33 @@ export const ChatPanel: React.FC = () => {
     let accumulatedLogs: string[] = [];
 
     try {
-      const abortController = new AbortController();
-      abortControllerRef.current = abortController;
-      const response = await fetch("/api/v1/chat/stream", {
-        method: "POST",
-        signal: abortController.signal,
-        headers: {
-          "Content-Type": "application/json",
-          "X-LLM-Profile-ID": activeProfileId,
-          "X-LLM-Provider": apiProvider || "deepseek",
-          "X-LLM-Model": apiModel || "deepseek-chat",
-          "X-App-Language": language,
-          "X-Device-ID": deviceId,
-          "X-Workflow-Cycles": String(workflowCycles || 3)
-        },
-        body: JSON.stringify({
-          message: userText,
-          document_id: selectedDocIds.length > 0 ? selectedDocIds[0] : null,
-          language: language,
-          history: turns.slice(-6).map(turnItem => ({ role: turnItem.role, content: turnItem.content })),
-          viz_selection: vizSelection ? { id: vizSelection.id, name: vizSelection.name, detail: vizSelection.detail, path: drillPath } : null
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.statusText}`);
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder("utf-8");
+      const creds = getActiveAgentKey();
+      if (!creds) throw new Error(language === "ar" ? "لم يتم العثور على مفتاح API نشط في هذا المتصفح. أضف مفتاحاً من الإعدادات." : "No active API key found in this browser. Add one in Settings (API tab).");
+      if (creds.provider === "gemini") throw new Error("Gemini tool-calling is not wired yet — please use a DeepSeek / OpenAI / Groq profile for the agent.");
       let partialText = "";
-
-      const parser = createSseParser((evt) => {
-        const valStr = evt.data;
-        if (evt.event === "agent_search") {
-          try {
-            const searchData = JSON.parse(valStr);
-            if (searchData.active_node_ids && searchData.active_node_ids.length > 0) setActiveGraphNodeIds(searchData.active_node_ids);
-            if (searchData.query) setActiveSearchStatus(language === "ar" ? `استرجاع في الخريطة: "${searchData.query}"` : `Graph querying: "${searchData.query}"`);
-          } catch {}
-        } else if (evt.event === "cycle_step" || evt.event === "status") {
-          try {
-            const stepObj = JSON.parse(valStr);
-            if (stepObj.status) {
-              setActiveSearchStatus(stepObj.status);
-              accumulatedLogs.push(stepObj.status);
-              setCycleLogs([...accumulatedLogs]);
-            }
-          } catch {}
-        } else if (evt.event === "delta" || evt.event === "token" || evt.event === "message") {
-          try {
-            const obj = JSON.parse(valStr);
-            partialText += obj.content ?? obj.token ?? "";
-          } catch {
-            partialText += valStr;
-          }
-          streamingContentRef.current = partialText;
-          scheduleStreamingPaint();
-        } else if (evt.event === "error") {
-          try {
-            const errObj = JSON.parse(valStr);
-            throw new Error(errObj.error || errObj.message || "Streaming error");
-          } catch (err) {
-            if (err instanceof Error) throw err;
-            throw new Error("Streaming error");
-          }
-        }
+      const answer = await runAgent({
+        creds,
+        message: userText,
+        history: turns.slice(-6).map(turnItem => ({ role: turnItem.role, content: turnItem.content })),
+        maxCycles: workflowCycles || 3,
+        vizSelection: vizSelection ? { name: vizSelection.name, detail: vizSelection.detail } : null,
+        events: {
+          onStatus: (status) => { setActiveSearchStatus(status); accumulatedLogs.push(status); setCycleLogs([...accumulatedLogs]); },
+          onViz: (viz) => {
+            if (viz.drillPath) setDrillPath(viz.drillPath);
+            if (viz.inspectIds) { setVizPhase("THINKING"); setActiveGraphNodeIds(viz.inspectIds); }
+            if (viz.shortlistIds) { setVizPhase("SHORTLIST"); setShortlistedIds(viz.shortlistIds); setActiveGraphNodeIds(viz.shortlistIds); }
+            if (viz.rejectedIds) setRejectedIds(viz.rejectedIds);
+            if (viz.focusId) { setFocusedPropertyId(viz.focusId); setVizPhase("FOCUS"); }
+          },
+          onToken: (full) => { partialText = full; streamingContentRef.current = full; scheduleStreamingPaint(); },
+        },
       });
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          parser.feed(decoder.decode(value, { stream: true }));
-        }
-        parser.feed(decoder.decode());
-        parser.end();
-        partialText = streamingContentRef.current;
-        setStreamingContent(partialText);
-      }
-
+      partialText = answer;
       const assistantTurn: ExtendedTurn = {
         id: `turn_a_${Date.now()}`,
         role: "assistant",
-        content: partialText || (language === "ar" ? "تم استكمال الاسترجاع من الدليل." : "Retrieval completed from workspace manual."),
+        content: partialText || (language === "ar" ? "تم استكمال البحث." : "Search completed."),
         timestamp: new Date().toISOString(),
         cycle_logs: accumulatedLogs
       };
@@ -264,7 +206,7 @@ export const ChatPanel: React.FC = () => {
     return (
       <button
         key={key}
-        onClick={() => setInspectingNodeId(code)}
+        
         className="source-chip"
         type="button"
         title={cleanTitle ? `${code} — ${cleanTitle}` : (language === "ar" ? "انقر لفحص البطاقة وقراءة النص الكامل" : "Click to inspect exact source node")}
@@ -532,7 +474,7 @@ export const ChatPanel: React.FC = () => {
             ref={textareaRef}
             id="chatInput"
             className="chat-input composer-input"
-            placeholder={selectedDocIds.length > 0 ? (language === "ar" ? `اسأل في نطاق المستند المعتمد...` : `Ask within scoped document...`) : t("ask_placeholder")}
+            placeholder={t("ask_placeholder")}
             value={inputMessage}
             onChange={(e) => {
               setInputMessage(e.target.value);

@@ -71,14 +71,9 @@ interface AppContextType {
   deleteSavedApiKey: (id: string) => Promise<void>;
   selectSavedApiKey: (id: string) => Promise<void>;
   vaultError: string | null;
+  getActiveAgentKey: () => { key: string; provider: string; model: string } | null;
   isSettingsOpen: boolean;
   setIsSettingsOpen: (open: boolean) => void;
-  inspectingNodeId: string | null;
-  setInspectingNodeId: (id: string | null) => void;
-  inspectingNode: any | null;
-  setInspectingNode: (node: any | null) => void;
-  selectedDocIds: string[];
-  setSelectedDocIds: React.Dispatch<React.SetStateAction<string[]>>;
   activeGraphNodeIds: string[];
   setActiveGraphNodeIds: React.Dispatch<React.SetStateAction<string[]>>;
   vizPhase: string;
@@ -101,8 +96,6 @@ interface AppContextType {
   setVizTransparency: React.Dispatch<React.SetStateAction<number>>;
   vizSelection: { id: string; name: string; detail: string } | null;
   setVizSelection: React.Dispatch<React.SetStateAction<{ id: string; name: string; detail: string } | null>>;
-  documents: DocumentDTO[];
-  fetchDocuments: () => Promise<void>;
   conversations: Conversation[];
   activeConversationId: string | null;
   setActiveConversationId: (id: string | null) => void;
@@ -149,9 +142,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [activeApiKeyId, setActiveApiKeyId] = useState<string | null>(null);
   const [vaultError, setVaultError] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [inspectingNodeId, setInspectingNodeId] = useState<string | null>(null);
-  const [inspectingNode, setInspectingNode] = useState<any | null>(null);
-  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [activeGraphNodeIds, setActiveGraphNodeIds] = useState<string[]>([]);
   const [vizPhase, setVizPhase] = useState<string>("IDLE");
   const [shortlistedIds, setShortlistedIds] = useState<string[]>([]);
@@ -163,7 +153,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [vizTransparency, setVizTransparency] = useState<number>(68); // % transparent in skeleton mode (futuristic default)
   const [vizViewMode, setVizViewMode] = useState<"planet" | "list">("planet"); // fallback list view closes the globe
   const [vizSelection, setVizSelection] = useState<{ id: string; name: string; detail: string } | null>(null);
-  const [documents, setDocuments] = useState<DocumentDTO[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: "default_conv",
@@ -211,6 +200,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     collect(localStorage.getItem(`gpr_saved_keys_${deviceId}`)); collect(localStorage.getItem("gpr_saved_keys"));
     const single = localStorage.getItem("gpr_llm_api_key"); if (single) legacy.push({ id: "local_single", label: "Local Profile", provider: isProvider(localStorage.getItem("gpr_llm_provider")) ? (localStorage.getItem("gpr_llm_provider") as any) : "deepseek", model: localStorage.getItem("gpr_llm_model") || "deepseek-chat", key: single, is_active: true });
     if (legacy.length) { if (!legacy.some(p => p.is_active)) legacy[0].is_active = true; saveLocalProfiles(legacy); }
+  };
+
+  const getActiveAgentKey = (): { key: string; provider: string; model: string } | null => {
+    // Static hosting: read the active profile (incl. key) from the browser-local vault.
+    try {
+      const profiles = loadLocalProfiles();
+      const active = profiles.find(p => p.is_active) || profiles[0];
+      if (active?.key) return { key: active.key, provider: active.provider, model: active.model };
+    } catch { /* fall through */ }
+    return null;
   };
 
   const refreshVaultProfiles = async () => {
@@ -391,7 +390,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       await initializeVault(devId);
       hasLoadedFromStorage.current = true;
       setIsReady(true);
-      fetchDocuments(devId);
     };
     void boot();
   }, []);
@@ -476,14 +474,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await refreshVaultProfiles();
   };
 
-  const fetchDocuments = async (devId = deviceId) => {
-    try {
-      const res = await fetch("/api/v1/documents", { headers: { "X-Device-ID": devId } });
-      if (res.ok) setDocuments(await res.json());
-    } catch {
-      // Document list is non-critical during boot; the map panel can retry on mount.
-    }
-  };
 
   const setActiveConversationId = (id: string | null) => {
     if (!id) {
@@ -592,19 +582,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         deleteSavedApiKey,
         selectSavedApiKey,
         vaultError,
+        getActiveAgentKey,
         isSettingsOpen,
         setIsSettingsOpen,
-        inspectingNodeId,
-        setInspectingNodeId,
-        inspectingNode,
-        setInspectingNode,
-        selectedDocIds,
-        setSelectedDocIds,
         activeGraphNodeIds,
         vizPhase, setVizPhase, shortlistedIds, setShortlistedIds, rejectedIds, setRejectedIds, focusedPropertyId, setFocusedPropertyId, drillPath, setDrillPath, theme, setTheme, vizColored, setVizColored, vizTransparency, setVizTransparency, vizViewMode, setVizViewMode, vizSelection, setVizSelection,
         setActiveGraphNodeIds,
-        documents,
-        fetchDocuments,
         conversations,
         activeConversationId,
         setActiveConversationId,

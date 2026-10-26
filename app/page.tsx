@@ -125,8 +125,11 @@ export default function Home() {
     document.addEventListener("mouseup", onMouseUp);
   };
 
+  // Left panel starts CONTRACTED on the very first frame (no open->contract flash):
+  // decide synchronously at render, not in a post-paint effect.
+  const leftClosedInitially = typeof window !== "undefined" && localStorage.getItem(`gpr_layout_${deviceId}_left_closed`) !== "false";
   return (
-    <div className="main-window" id="mainWindow">
+    <div className={`main-window${leftClosedInitially ? " left-panel-closed" : ""}`} id="mainWindow">
       <NightSky />
       {/* Mobile Drawer Backdrop */}
       <div

@@ -19,7 +19,7 @@ export const PropertyListView: React.FC = () => {
   const focusedUnit = drillPath.length === 3 ? findCompound(drillPath[0], drillPath[1], drillPath[2])?.units.find(u => u.id === focusedPropertyId) : undefined;
 
   return (
-    <div style={{ height: "100%", overflowY: "auto", padding: "14px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
+    <div className="no-scrollbar" style={{ height: "100%", overflowY: "auto", padding: "14px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", letterSpacing: ".01em" }}>{title}</div>
       {drillPath.length > 0 && (
         <button type="button" onClick={() => setDrillPath(drillPath.slice(0, -1))}
