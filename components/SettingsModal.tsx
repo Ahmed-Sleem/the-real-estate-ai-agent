@@ -20,7 +20,7 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const {
     savedApiKeys, activeApiKeyId, addSavedApiKey, deleteSavedApiKey, selectSavedApiKey,
-    workflowCycles, setWorkflowCycles, deviceId, language, t, vaultError, vizColored, setVizColored, vizTransparency, setVizTransparency
+    workflowCycles, setWorkflowCycles, deviceId, language, t, vaultError, vizColored, setVizColored, vizTransparency, setVizTransparency, vizViewMode, setVizViewMode
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<"api" | "workflow" | "viz">("api");
@@ -264,6 +264,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     ? "الوضع الافتراضي هيكل أبيض نظيف للكوكب والمباني؛ فعّل الألوان لعرض خامات وألوان النماذج الأصلية."
                     : "Default is a clean white skeleton planet and buildings. Turn colours on to show the models' original textures and colours."}
                 </p>
+              </div>
+
+              <div style={{ background: "var(--color-stone)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-md)", padding: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{language === "ar" ? "نوع العرض:" : "Visualization type:"}</span>
+                <div role="group" aria-label="Visualization type" style={{ display: "flex", gap: "8px" }}>
+                  {([["planet", language === "ar" ? "🌍 الكوكب ثلاثي الأبعاد" : "🌍 3D Planet"], ["list", language === "ar" ? "📋 قائمة" : "📋 List"]] as const).map(([mode, label]) => (
+                    <button key={mode} type="button" aria-pressed={vizViewMode === mode} onClick={() => setVizViewMode(mode)}
+                      style={{ flex: 1, padding: "9px 10px", borderRadius: "999px", cursor: "pointer", fontSize: "12px", fontWeight: 700,
+                        border: `1.5px solid ${vizViewMode === mode ? "var(--color-accent)" : "var(--border-med)"}`,
+                        background: vizViewMode === mode ? "var(--color-accent)" : "var(--color-paper)",
+                        color: vizViewMode === mode ? "var(--color-accent-contrast)" : "var(--text-primary)" }}>{label}</button>
+                  ))}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--text-meta)", lineHeight: 1.5 }}>
+                  {vizViewMode === "list"
+                    ? (language === "ar" ? "القائمة مفعلة: الكوكب مغلق، وتظهر العناصر كبطاقات." : "List ON: the globe is closed and places/units show as cards.")
+                    : (language === "ar" ? "الكوكب مفعّل (افتراضي)." : "3D Planet ON (default).")}
+                </div>
               </div>
               <div style={{ background: "var(--color-stone)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-md)", padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

@@ -96,6 +96,8 @@ interface AppContextType {
   vizColored: boolean;
   setVizColored: React.Dispatch<React.SetStateAction<boolean>>;
   vizTransparency: number;
+  vizViewMode: "planet" | "list";
+  setVizViewMode: React.Dispatch<React.SetStateAction<"planet" | "list">>;
   setVizTransparency: React.Dispatch<React.SetStateAction<number>>;
   vizSelection: { id: string; name: string; detail: string } | null;
   setVizSelection: React.Dispatch<React.SetStateAction<{ id: string; name: string; detail: string } | null>>;
@@ -159,6 +161,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [theme, setThemeState] = useState<"dark" | "light">("dark");
   const [vizColored, setVizColored] = useState<boolean>(false); // skeleton (white) by default
   const [vizTransparency, setVizTransparency] = useState<number>(68); // % transparent in skeleton mode (futuristic default)
+  const [vizViewMode, setVizViewMode] = useState<"planet" | "list">("planet"); // fallback list view closes the globe
   const [vizSelection, setVizSelection] = useState<{ id: string; name: string; detail: string } | null>(null);
   const [documents, setDocuments] = useState<DocumentDTO[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([
@@ -342,6 +345,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setVizColored(localStorage.getItem("rea_viz_colored") === "true");
       const savedTransp = Number(localStorage.getItem("rea_viz_transparency"));
       if (Number.isFinite(savedTransp) && savedTransp >= 0 && savedTransp <= 90) setVizTransparency(savedTransp);
+      if (localStorage.getItem("rea_viz_view") === "list") setVizViewMode("list");
       const savedCycles = parseInt(localStorage.getItem(`gpr_workflow_cycles_${devId}`) || "3", 10);
       setLanguageState(savedLang === "ar" || savedLang === "en" ? savedLang : "en");
       if (savedCycles >= 1 && savedCycles <= 6) setWorkflowCyclesState(savedCycles);
@@ -419,6 +423,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   useEffect(() => { localStorage.setItem("rea_viz_colored", String(vizColored)); }, [vizColored]);
   useEffect(() => { localStorage.setItem("rea_viz_transparency", String(vizTransparency)); }, [vizTransparency]);
+  useEffect(() => { localStorage.setItem("rea_viz_view", vizViewMode); }, [vizViewMode]);
 
   const setApiProvider = (prov: "deepseek" | "groq" | "openai" | "gemini") => {
     setApiProviderState(prov);
@@ -596,7 +601,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         selectedDocIds,
         setSelectedDocIds,
         activeGraphNodeIds,
-        vizPhase, setVizPhase, shortlistedIds, setShortlistedIds, rejectedIds, setRejectedIds, focusedPropertyId, setFocusedPropertyId, drillPath, setDrillPath, theme, setTheme, vizColored, setVizColored, vizTransparency, setVizTransparency, vizSelection, setVizSelection,
+        vizPhase, setVizPhase, shortlistedIds, setShortlistedIds, rejectedIds, setRejectedIds, focusedPropertyId, setFocusedPropertyId, drillPath, setDrillPath, theme, setTheme, vizColored, setVizColored, vizTransparency, setVizTransparency, vizViewMode, setVizViewMode, vizSelection, setVizSelection,
         setActiveGraphNodeIds,
         documents,
         fetchDocuments,

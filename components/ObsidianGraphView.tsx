@@ -21,7 +21,7 @@ const R = 15;
 
 export interface PlanetItem { id: string; name: string; sub: string; model: string; cluster?: boolean; }
 
-function levelItems(path: string[]): { items: PlanetItem[]; title: string } {
+export function levelItems(path: string[]): { items: PlanetItem[]; title: string } {
   if (path.length === 0) return { title: "Egypt — choose a city", items: TREE.map(c => ({ id: c.id, name: c.name, sub: `${c.districts.reduce((a, d) => a + d.compounds.length, 0)} compounds`, model: "low-a", cluster: true })) };
   const city = cityById(path[0]); if (!city) return { items: [], title: "" };
   if (path.length === 1) return { title: `${city.name} — choose a district`, items: city.districts.map(d => ({ id: d.id, name: d.name, sub: `${d.compounds.length} compounds`, model: "low-b", cluster: true })) };
