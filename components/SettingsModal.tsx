@@ -20,7 +20,7 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const {
     savedApiKeys, activeApiKeyId, addSavedApiKey, deleteSavedApiKey, selectSavedApiKey,
-    workflowCycles, setWorkflowCycles, deviceId, language, t, vaultError, vizColored, setVizColored, vizTransparency, setVizTransparency, vizViewMode, setVizViewMode
+    workflowCycles, setWorkflowCycles, deviceId, language, t, vaultError, vizColored, setVizColored, vizTransparency, setVizTransparency, vizViewMode, setVizViewMode, showThinkingLog, setShowThinkingLog
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<"api" | "workflow" | "viz">("api");
@@ -653,6 +653,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   {workflowCycles === 3 && (language === "ar" ? "3 دورات (الموصى به): يسمح باستعراض حتى 3 عقد متتالية لحل الاستفسارات الإدارية والتشغيلية المتداخلة." : "3 Cycles (Recommended): up to 3 tool rounds — e.g. browse a level, search units, compare — before the final answer.")}
                   {workflowCycles === 6 && (language === "ar" ? "6 دورات (الحد الأقصى): أقصى عمق استقصاء لأسئلة الهيكل المعقدة." : "6 Cycles (Maximum Depth): Deepest exploration across multiple departments.")}
                   {workflowCycles !== 1 && workflowCycles !== 3 && workflowCycles !== 6 && (language === "ar" ? `يسمح باستعراض ما يصل إلى ${workflowCycles} عقد دلالية متتالية.` : `Allows inspecting up to ${workflowCycles} distinct TOC nodes sequentially.`)}
+                </div>
+              </div>
+
+              <div style={{ background: "var(--color-stone)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-md)", padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>
+                    {language === "ar" ? "إظهار سجل التفكير:" : "Show thinking log:"}
+                  </span>
+                  <button
+                    type="button" role="switch" aria-checked={showThinkingLog}
+                    onClick={() => setShowThinkingLog(!showThinkingLog)}
+                    title={language === "ar" ? "تبديل سجل التفكير" : "Toggle thinking log"}
+                    style={{
+                      width: "52px", height: "28px", borderRadius: "999px", padding: "3px",
+                      background: showThinkingLog ? "var(--color-accent)" : "var(--color-paper)",
+                      border: "1px solid var(--border-med)", cursor: "pointer",
+                      display: "flex", justifyContent: showThinkingLog ? "flex-end" : "flex-start", alignItems: "center",
+                      transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)"
+                    }}
+                  >
+                    <span style={{ width: "20px", height: "20px", borderRadius: "50%", background: showThinkingLog ? "var(--color-accent-contrast)" : "var(--text-meta)", transition: "all 0.2s ease" }} />
+                  </button>
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--text-meta)", lineHeight: 1.5 }}>
+                  {showThinkingLog
+                    ? (language === "ar" ? "ظاهر: تظهر خطوات بحث الوكيل وأدواته داخل المحادثة أثناء العمل وبعده." : "Visible: the agent's search steps and tool calls show in the chat, live and on past messages.")
+                    : (language === "ar" ? "مخفي (افتراضي): لا يظهر أي سجل تفكير في المحادثة؛ تبقى حركة الخريطة فقط." : "Hidden (default): no thinking log appears in the chat; only the map animation shows the work.")}
                 </div>
               </div>
             </div>

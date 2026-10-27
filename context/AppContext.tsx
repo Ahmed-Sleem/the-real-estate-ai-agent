@@ -92,6 +92,8 @@ interface AppContextType {
   setVizColored: React.Dispatch<React.SetStateAction<boolean>>;
   vizTransparency: number;
   vizViewMode: "planet" | "list";
+  showThinkingLog: boolean;
+  setShowThinkingLog: React.Dispatch<React.SetStateAction<boolean>>;
   setVizViewMode: React.Dispatch<React.SetStateAction<"planet" | "list">>;
   setVizTransparency: React.Dispatch<React.SetStateAction<number>>;
   vizSelection: { id: string; name: string; detail: string } | null;
@@ -152,6 +154,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [vizColored, setVizColored] = useState<boolean>(false); // skeleton (white) by default
   const [vizTransparency, setVizTransparency] = useState<number>(68); // % transparent in skeleton mode (futuristic default)
   const [vizViewMode, setVizViewMode] = useState<"planet" | "list">("planet"); // fallback list view closes the globe
+  const [showThinkingLog, setShowThinkingLog] = useState<boolean>(false); // thinking log hidden by default
   const [vizSelection, setVizSelection] = useState<{ id: string; name: string; detail: string } | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([
     {
@@ -345,6 +348,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const savedTransp = Number(localStorage.getItem("rea_viz_transparency"));
       if (Number.isFinite(savedTransp) && savedTransp >= 0 && savedTransp <= 90) setVizTransparency(savedTransp);
       if (localStorage.getItem("rea_viz_view") === "list") setVizViewMode("list");
+      setShowThinkingLog(localStorage.getItem("rea_show_thinking_log") === "true");
       const savedCycles = parseInt(localStorage.getItem(`gpr_workflow_cycles_${devId}`) || "3", 10);
       setLanguageState(savedLang === "ar" || savedLang === "en" ? savedLang : "en");
       if (savedCycles >= 1 && savedCycles <= 6) setWorkflowCyclesState(savedCycles);
@@ -422,6 +426,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => { localStorage.setItem("rea_viz_colored", String(vizColored)); }, [vizColored]);
   useEffect(() => { localStorage.setItem("rea_viz_transparency", String(vizTransparency)); }, [vizTransparency]);
   useEffect(() => { localStorage.setItem("rea_viz_view", vizViewMode); }, [vizViewMode]);
+  useEffect(() => { localStorage.setItem("rea_show_thinking_log", String(showThinkingLog)); }, [showThinkingLog]);
 
   const setApiProvider = (prov: "deepseek" | "groq" | "openai" | "gemini") => {
     setApiProviderState(prov);
@@ -586,7 +591,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isSettingsOpen,
         setIsSettingsOpen,
         activeGraphNodeIds,
-        vizPhase, setVizPhase, shortlistedIds, setShortlistedIds, rejectedIds, setRejectedIds, focusedPropertyId, setFocusedPropertyId, drillPath, setDrillPath, theme, setTheme, vizColored, setVizColored, vizTransparency, setVizTransparency, vizViewMode, setVizViewMode, vizSelection, setVizSelection,
+        vizPhase, setVizPhase, shortlistedIds, setShortlistedIds, rejectedIds, setRejectedIds, focusedPropertyId, setFocusedPropertyId, drillPath, setDrillPath, theme, setTheme, vizColored, setVizColored, vizTransparency, setVizTransparency, vizViewMode, setVizViewMode, showThinkingLog, setShowThinkingLog, vizSelection, setVizSelection,
         setActiveGraphNodeIds,
         conversations,
         activeConversationId,

@@ -18,7 +18,7 @@ interface ExtendedTurn extends ConversationTurn {
 export const ChatPanel: React.FC = () => {
   const {
     conversations, activeConversationId, addTurnToConversation,
-    savedApiKeys, activeApiKeyId, apiProvider, apiModel, language, setActiveGraphNodeIds, deviceId, workflowCycles, setIsSettingsOpen, t, setVizPhase, setShortlistedIds, setRejectedIds, setFocusedPropertyId, drillPath, setDrillPath, vizSelection, setVizSelection, getActiveAgentKey
+    savedApiKeys, activeApiKeyId, apiProvider, apiModel, language, setActiveGraphNodeIds, deviceId, workflowCycles, setIsSettingsOpen, t, setVizPhase, setShortlistedIds, setRejectedIds, setFocusedPropertyId, drillPath, setDrillPath, vizSelection, setVizSelection, getActiveAgentKey, showThinkingLog
   } = useApp();
 
   const [inputMessage, setInputMessage] = useState("");
@@ -333,7 +333,7 @@ export const ChatPanel: React.FC = () => {
               </span>
               <div className="content">
                 {/* Render cycle logs card if saved for assistant turn and actual nodes were requested (`Point 9 & Point 10`) */}
-                {turn.role === "assistant" && turn.cycle_logs && turn.cycle_logs.some(l => l.includes("Inspecting") || l.includes("Requested inspection") || l.includes("inspecting")) && (
+                {showThinkingLog && turn.role === "assistant" && turn.cycle_logs && turn.cycle_logs.some(l => l.includes("Inspecting") || l.includes("Requested inspection") || l.includes("inspecting")) && (
                   <div className="thinking-log-card" style={{
                     background: "var(--color-slate)", border: "1px solid var(--border-soft)",
                     borderRadius: "var(--radius-sm)",
@@ -364,8 +364,8 @@ export const ChatPanel: React.FC = () => {
             <div className="bubble">
               <span className="role-label">{language === "ar" ? "وكيل العقارات" : "The Real Estate Agent"}</span>
               <div className="content">
-                {/* Live Status Feed during Streaming — always visible when streaming (`Point 5`) */}
-                {isStreaming && (
+                {/* Live status feed — only when thinking log is enabled in Settings */}
+                {showThinkingLog && isStreaming && (
                   <div className="thinking-log-card" style={{
                     background: "var(--color-slate)", border: "1px solid var(--border-soft)",
                     borderRadius: "var(--radius-sm)",
@@ -392,7 +392,7 @@ export const ChatPanel: React.FC = () => {
                   </div>
                 )}
 
-                {activeSearchStatus && (
+                {showThinkingLog && activeSearchStatus && (
                   <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-accent)", marginBottom: "6px", opacity: 0.9 }}>
                     {activeSearchStatus}
                   </div>
