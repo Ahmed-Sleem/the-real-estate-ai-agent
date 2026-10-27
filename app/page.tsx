@@ -17,6 +17,7 @@ import { useApp } from "../context/AppContext";
 export default function Home() {
   const { language, isReady, deviceId } = useApp();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [dockHidden, setDockHidden] = useState(false);
   const layoutKey = (name: string) => `gpr_layout_${deviceId}_${name}`;
 
   useEffect(() => {
@@ -48,6 +49,24 @@ export default function Home() {
       mainWindow.classList.toggle("right-panel-closed", localStorage.getItem(layoutKey("right_closed")) === "true");
     }
   }, [isReady, deviceId]);
+
+  // Button dock: auto-retracts after 3s; cursor approaching its place restores it.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = setTimeout(() => setDockHidden(true), 3000);
+    const arm = () => { if (timer) clearTimeout(timer); timer = setTimeout(() => setDockHidden(true), 3000); };
+    const onMove = (e: MouseEvent) => {
+      const el = document.querySelector(".app-header");
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const near = e.clientX >= r.left - 60 && e.clientX <= r.right + 60 && e.clientY >= r.top - 64;
+      if (near) { if (timer) { clearTimeout(timer); timer = null; } setDockHidden(false); }
+      else if (!timer) arm();
+    };
+    const onFocus = () => { if (timer) { clearTimeout(timer); timer = null; } setDockHidden(false); };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("focusin", onFocus);
+    return () => { if (timer) clearTimeout(timer); document.removeEventListener("mousemove", onMove); document.removeEventListener("focusin", onFocus); };
+  }, []);
 
   useEffect(() => {
     document.body.classList.toggle("mobile-sidebar-open", isMobileSidebarOpen);
@@ -129,7 +148,7 @@ export default function Home() {
   // decide synchronously at render, not in a post-paint effect.
   const leftClosedInitially = typeof window !== "undefined" && localStorage.getItem(`gpr_layout_${deviceId}_left_closed`) !== "false";
   return (
-    <div className={`main-window${leftClosedInitially ? " left-panel-closed" : ""}`} id="mainWindow">
+    <div className={`main-window${leftClosedInitially ? " left-panel-closed" : ""}${dockHidden ? " dock-hidden" : ""}`} id="mainWindow">
       <NightSky />
       {/* Mobile Drawer Backdrop */}
       <div
